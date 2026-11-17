@@ -1,0 +1,47 @@
+# Voorbeeldserverlijst voor Trace.
+# Structuur en variabelen volgen een Ansible-inventaris (YAML), zodat een
+# bestaande inventaris zonder aanpassingen bruikbaar is. Trace leest alleen
+# de variabelen hieronder en negeert de rest.
+#
+#   ansible_host                  adres van de server (standaard: de naam zelf)
+#   ansible_port                  SSH-poort (standaard: 22)
+#   ansible_user                  SSH-gebruiker; moet dezelfde zijn als die van
+#                                 het script, of root, om te kunnen attachen
+#   ansible_ssh_private_key_file  SSH-sleutel
+#   trace_debug                   true: niveau 1 tot 3 (wrapper, tracepoints,
+#                                 attach) toegelaten. false: enkel niveau 0 (logs).
+#                                 Standaard false: niets grijpt in zonder toestemming.
+#
+# Variabelen onder 'vars' gelden voor de hele groep; een server kan ze overschrijven.
+
+all:
+  vars:
+    ansible_user: ops
+    ansible_ssh_private_key_file: ~/.ssh/fleet
+    trace_debug: false
+
+  children:
+    web:                       # productie: alleen logs ophalen
+      hosts:
+        web01:
+          ansible_host: 10.0.0.11
+        web02:
+          ansible_host: 10.0.0.12
+
+    build:                     # buildservers: debuggen toegelaten
+      vars:
+        trace_debug: true
+      hosts:
+        build01:
+          ansible_host: 10.0.1.21
+          ansible_user: ci     # scripts draaien hier als 'ci'
+
+    lab:                       # de PoC-VM uit poc/attach
+      vars:
+        trace_debug: true
+      hosts:
+        vm01:
+          ansible_host: 127.0.0.1
+          ansible_port: 2222
+          ansible_user: dbg
+          ansible_ssh_private_key_file: poc/attach/key

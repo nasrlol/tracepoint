@@ -1,0 +1,56 @@
+TOPIC
+    about_Trace
+
+SHORT DESCRIPTION
+    Remote debugger voor PowerShell-scripts op een vloot servers.
+
+LONG DESCRIPTION
+    Trace vindt draaiende PowerShell-scripts op meerdere servers via
+    SSH-remoting, volgt ze op en legt bij een crash de volledige toestand
+    vast: regel, variabelen, callstack en $Error.
+
+    Op de servers is niets extra nodig: alleen pwsh 7.2 of hoger en het
+    powershell-subsystem van sshd. Alle logica draait op de beheermachine.
+
+  DE SERVERLIJST
+    Trace leest een YAML-bestand in de structuur van een Ansible-inventaris.
+    Zie fleet.example.yml. Per server gelden ansible_host, ansible_port,
+    ansible_user, ansible_ssh_private_key_file en trace_debug.
+
+    trace_debug staat standaard op false. Dan haalt Trace op die server
+    alleen logs op (niveau 0) en grijpt het nooit in op een script.
+
+  NIVEAUS VAN LICHT TOT DIEP
+    0  logs         De logbestanden die het script zelf schrijft ophalen.
+                    Werkt alleen als het script zelf logt.
+
+    1  wrapper      Een script starten via een wrapper die bij een fout
+                    de toestand vastlegt. Vangt ook kortlopende scripts op,
+                    zoals cronjobs.
+
+    2  tracepoints  Een waarde vastleggen telkens een regel of variabele
+                    geraakt wordt, zonder het script te stoppen.
+
+    3  attach       Aanhaken aan een script dat al draaide, en daar
+                    niveau 1 en 2 toepassen.
+
+    Niveau 1 tot 3 vereisen trace_debug: true. Attachen vereist bovendien
+    dezelfde gebruiker als het script, of root.
+
+  WAT TRACE NIET ZIET
+    Discovery vindt alleen scripts die op dat moment draaien. Een script
+    dat start en eindigt tussen twee scans wordt niet gevonden; start
+    zulke scripts via de wrapper (niveau 1).
+
+EXAMPLES
+    Gepland; de cmdlets bestaan nog niet.
+
+    Import-TraceServer ./fleet.yml | Test-TraceServer
+    Import-TraceServer ./fleet.yml | Find-TraceScript
+    Import-TraceServer ./fleet.yml | Find-TraceScript | Connect-TraceScript
+    Get-TraceCrashReport -Server build01
+
+SEE ALSO
+    Get-Help Set-PSBreakpoint
+    Get-Help Enter-PSHostProcess
+    https://learn.microsoft.com/powershell/scripting/security/remoting/ssh-remoting-in-powershell
