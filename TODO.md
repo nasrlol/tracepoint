@@ -21,8 +21,9 @@ verbinding wegvalt en kan breakpoints zelf opruimen.
 
 ## Meetbare performancedoelen vastleggen
 
-Vastgelegd: een tracepoint vertraagt een script hooguit 10% (`Measure-Command`).
-Nog te bepalen na metingen op de 5 testservers, voor het doel van 20 servers en ~100 scripts:
+Geen getallen vastleggen zonder meting. Eerst een basislijn meten op de 5 testservers (`Measure-Command`),
+daarna pas doelen bepalen, voor het doel van 20 servers en ~100 scripts:
+- vertraging van een script door tracepoints (met en zonder): < ? %
 - `Test-TraceServer` op 20 servers: < ? s (parallel)
 - `Find-TraceScript` op 20 servers: < ? s
 - crash → rapport op de beheermachine: < ? s
@@ -32,5 +33,10 @@ Nog te bepalen na metingen op de 5 testservers, voor het doel van 20 servers en 
 
 Eigen runner (script dat bij een push getriggerd wordt). Nakijken:
 - op welke machine hij draait en of die KVM heeft (dan kunnen de QEMU-test-VM's in CI);
-- waar de macOS-tests draaien;
-- unittests (Mock) op Linux en macOS, integratietests tegen QEMU-VM's.
+- unittests (Mock) en veerkrachttests op Linux (QEMU-VM's).
+
+## Write-ahead log vol
+
+Wat gebeurt er als het log op de server zijn maximale grootte bereikt (beheermachine lang niet verbonden)?
+Mogelijke richting: oudste tracepoint-records laten vallen en het gat in het rapport melden;
+crashrapporten nooit weggooien. Staat als zwakte W5 in het voorstel.
