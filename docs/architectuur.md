@@ -17,7 +17,7 @@ Trace-module                          sshd
 ```
 
 Alle logica zit in de module op de beheermachine. Op een server zijn alleen
-`pwsh` (7.2 of hoger) en het `powershell`-subsystem van sshd nodig.
+`pwsh` (7.4 of hoger) en het `powershell`-subsystem van sshd nodig.
 
 ## Debugging van licht tot diep
 

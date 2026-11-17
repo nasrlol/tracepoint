@@ -9,8 +9,8 @@ regel, variabelen, callstack en `$Error`. Op de servers wordt niets geïnstallee
 
 ## Vereisten
 
-- **Beheermachine:** PowerShell 7.2 of hoger, de module `powershell-yaml`.
-- **Servers:** PowerShell 7.2 of hoger, en in `sshd_config`:
+- **Beheermachine:** PowerShell 7.4 of hoger, de module `powershell-yaml`.
+- **Servers:** PowerShell 7.4 of hoger, en in `sshd_config`:
   ```
   Subsystem powershell /usr/bin/pwsh -sshs -NoLogo
   ```

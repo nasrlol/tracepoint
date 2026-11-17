@@ -9,7 +9,7 @@ LONG DESCRIPTION
     SSH-remoting, volgt ze op en legt bij een crash de volledige toestand
     vast: regel, variabelen, callstack en $Error.
 
-    Op de servers is niets extra nodig: alleen pwsh 7.2 of hoger en het
+    Op de servers is niets extra nodig: alleen pwsh 7.4 of hoger en het
     powershell-subsystem van sshd. Alle logica draait op de beheermachine.
 
   DE SERVERLIJST
