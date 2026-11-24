@@ -1,3 +1,6 @@
+# archived/ is local-only material; only the PoC is tracked
+archived/*
+!archived/poc/
 archived/poc/attach/cache/
 archived/poc/attach/run/
 archived/poc/attach/key
