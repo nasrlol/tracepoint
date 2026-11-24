@@ -1,0 +1,71 @@
+POWERSHELL DEBUGGERS: OVERZICHT
+===============================
+Onderzocht op 2026-11-24. Bronnen per bestand en volledig in bronnen.txt.
+
+BESTANDEN
+  00-overzicht.txt                dit bestand: alles in één tabel + wat het betekent voor Trace
+  01-ingebouwd.txt                de debugger van de engine zelf en zijn cmdlets
+  02-editors-pses.txt             editors die PowerShell Editor Services (DAP) gebruiken
+  03-ide-commercieel-historisch.txt  ISE, ISESteroids, PowerShell Studio, Pro Tools, PowerGUI, ...
+  04-hosts-en-nichetools.txt      Add-Debugger, PowerShell Universal, Azure Functions, Invoke-Build
+  05-community.txt                ervaringen en klachten (GitHub issues, Stack Overflow, fora)
+  bronnen.txt                     alle URL's
+
+DE KERN IN ÉÉN ZIN
+  Er bestaat maar één echte PowerShell-debugger: die van de engine
+  (System.Management.Automation.Debugger). Al het andere is een front-end:
+  - cmdlets in de console (Set-PSBreakpoint, Wait-Debugger, Debug-Runspace, ...)
+  - PowerShell Editor Services (PSES), dat de engine-debugger aanbiedt via DAP
+    -> VS Code, Neovim, Helix, IntelliJ/Rider, tdb, ...
+  - eigen IDE-integraties die rechtstreeks de engine aanspreken
+    -> ISE, PowerShell Studio/PrimalScript, PowerShell Pro Tools (Visual Studio)
+
+TABEL
+  naam                     soort              pwsh 7  Linux  attach  remote  status (nov 2026)
+  -----------------------  -----------------  ------  -----  ------  ------  ------------------------------
+  engine-cmdlets           ingebouwd          ja      ja     ja      ja      actief, deel van PowerShell
+  Set-PSDebug / Trace-Cmd  tracing            ja      ja     n.v.t.  n.v.t.  actief
+  VS Code + extensie       editor (PSES)      ja      ja     ja      deels   actief, de "officiële" weg
+  nvim-dap-powershell      editor (PSES)      ja      ja     ja      ?       community
+  powershell.nvim          editor (PSES)      ja      ja     ?       ?       community, nvim 0.10+
+  dap-powershell.nvim      editor (PSES)      ja      ja     ?       ?       community
+  Helix                    editor (PSES)      ja      ja     ja      ?       handmatige config (wiki)
+  Emacs dap-mode/dap-pwsh  editor (PSES)      ja      ja     ?       ?       oud, status onduidelijk
+  Emacs dape               editor (DAP)       ?       ja     ?       ?       geen PowerShell-config gevonden
+  IntelliJ / Rider plugin  editor (PSES)      ja      ja     ?       ?       debugger sinds plugin v2.7.0
+  Zed                      editor             -       -      -       -       PowerShell-debugging nog NIET
+  tdb                      TUI (PSES)         7.2+    ja     nee     nee     community
+  dap-tui                  generieke DAP-TUI  zelf    ja     ?       ?       generiek, zelf aan PSES koppelen
+  Windows PowerShell ISE   IDE                nee     nee    ja*     ja*     alleen 5.1, geen ontwikkeling
+  ISESteroids              ISE-add-on         nee     nee    -       -       commercieel, status onduidelijk
+  PowerShell Studio        IDE (SAPIEN)       ja     nee    ?       ja(RSEE) commercieel, actief (2026-versie)
+  PrimalScript             IDE (SAPIEN)       ja     nee    ?       ja(RSEE) commercieel, actief
+  PowerShell Pro Tools     Visual Studio      ja     nee    ja      ja      end-of-life, wordt open source
+  PowerGUI (Quest)         IDE                nee     nee    -       -       dood (~2011+)
+  PowerShell Plus (Idera)  IDE                nee     nee    -       -       dood (laatste release 2016)
+  Add-Debugger.ps1         debugger-host      ja      ja     -       -       actief (v3.0.1, dec 2025)
+  PowerShell Universal     platform           ja      ja     ja      -       gebruikt Wait-Debugger + attach
+
+  ja* = via de cmdlets in het consolepaneel, niet via de GUI.
+  ?   = niet gevonden in de bronnen; niet geverifieerd.
+
+WAT DIT BETEKENT VOOR TRACE
+  - Elke bestaande tool gaat uit van een mens achter een prompt of editor die
+    stap voor stap meekijkt. Geen enkele tool richt zich op "breakpoints met
+    acties zetten op veel servers tegelijk, zonder dat het script stilstaat".
+    Dat is precies de niche van Trace (niveau 2 tracepoints, niveau 3 attach).
+  - Wat Trace doet (NamedPipeConnectionInfo + runspace in het doelproces) is
+    hetzelfde mechanisme als Enter-PSHostProcess, en ook wat "PowerShell Attach
+    to Host Process" in VS Code en de Helix-attach-config onder de motorkap
+    gebruiken (processId + runspaceId = 1). Zie architectuur.md.
+  - De beperking uit de PoC ("remote debugging is not supported by the current
+    host" bij Set-PSBreakpoint -Runspace) is dezelfde reden waarom tools als
+    Add-Debugger.ps1 bestaan: een host zonder debugger-UI moet zelf een
+    DebuggerStop-handler leveren. Tracepoints zonder 'break' omzeilen dat.
+  - PSES is de enige serieuze herbruikbare backend (DAP over named pipe /
+    Unix-socket). Volgens de eigen README zijn de types van PSES niet stabiel om
+    tegen te linken. Voor Trace dus beter de engine-API rechtstreeks gebruiken,
+    zoals nu.
+  - ForEach-Object -Parallel en ThreadJobs draaien in eigen runspaces; een
+    breakpoint op runspace 1 vangt die niet. Trace moet Get-Runspace
+    breder bekijken als zulke scripts op de vloot draaien (zie 01-ingebouwd.txt).

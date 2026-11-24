@@ -1,0 +1,67 @@
+COMMUNITY: ERVARINGEN, KLACHTEN, TIPS
+======================================
+
+OVER REDDIT
+  Reddit kon niet worden doorzocht: de zoektool weigert reddit.com en ook
+  rechtstreeks ophalen (www.reddit.com, old.reddit.com, de .json-API) wordt
+  geblokkeerd. Er staat hier dus NIETS van Reddit, en niets is uit het geheugen
+  aangevuld. Wie r/PowerShell wil meenemen: zelf zoeken op "debugger",
+  "debug vscode", "Wait-Debugger", "Enter-PSHostProcess" en de draadjes hier
+  toevoegen. In de plaats daarvan staan hieronder GitHub-issues,
+  Stack Overflow (via een mirror), Microsoft Q&A en fora.
+
+1. VS CODE-EXTENSIE: TERUGKERENDE KLACHTEN (GitHub vscode-powershell, 2019-2023)
+  - Debugger bevriest na een breakpoint; Step Over / Continue doet niets
+    (#3539, #987); hangt in geneste scriptblocks (#2448).
+  - Hangt tot je ENTER drukt (v2021.8.1-preview, PS 7, Windows en macOS, #3513);
+    hangt bij starten vanuit de terminal i.p.v. de editor (#3522).
+  - Breakpoints worden niet geraakt (Microsoft Q&A 993049) of verwijderde
+    breakpoints blijven stoppen (#4712, #614).
+  - Hangt met System.Windows.Forms-objecten (#3410).
+  - Breakpoints remote onbetrouwbaar (#4531).
+  - Oneindige lus als het PowerShell-proces sluit terwijl de debugger hangt (#4894).
+  - Interactive Session / attach brak in preview v2022.9.0, downgrade naar
+    2022.8.5 hielp (#4185).
+  - Niet bruikbaar in Constrained Language Mode.
+  Of deze in recente versies opgelost zijn, is niet per issue nagekeken.
+
+2. STACK OVERFLOW / MICROSOFT Q&A
+  - "Breakpoint in ForEach-Object -Parallel stopt nooit": eigen runspace per
+    iteratie. Oplossing: Wait-Debugger + aanhaken vanuit tweede pwsh, of -AsJob +
+    Debug-Runspace (zie 01-ingebouwd.txt).
+  - "AmbiguousParameterSet bij -Parallel": je draait in een host die geen
+    PowerShell 7 is (bv. de ISE of een oude VS Code-console).
+
+3. ALGEMEEN GEDEELDE ADVIEZEN (blogs, boeken, fora)
+  - VS Code + extensie voor interactief debuggen; ISE alleen nog voor 5.1.
+  - Write-Verbose/Write-Debug in je code, -Verbose/-Debug bij aanroep.
+  - Set-StrictMode tijdens ontwikkeling.
+  - Set-PSDebug -Trace 1/2 als snelle "wat gebeurt er"-blik zonder debugger.
+  - Voor scripts in services/taken: Wait-Debugger + Enter-PSHostProcess, of
+    gewoon goede logging en transcripts.
+  - PowerShell Studio wordt vaak genoemd door wie GUI-tools bouwt of remote wil
+    debuggen op Windows, en is dan het geld waard; anderen vinden VS Code genoeg.
+    (Oordeel uit reviews/alternatiefsites, niet uit Reddit.)
+
+4. VERKEERD BEGREPEN TOOLS
+  - DbgShell en PowerDbg zijn om WinDbg vanuit PowerShell te gebruiken, niet om
+    PowerShell te debuggen.
+  - Trace-Command tracet de engine (parameter binding, command discovery), niet
+    jouw scriptregels.
+
+BRONNEN
+  https://github.com/PowerShell/vscode-powershell/issues/3539
+  https://github.com/PowerShell/vscode-powershell/issues/987
+  https://github.com/PowerShell/vscode-powershell/issues/2448
+  https://github.com/PowerShell/vscode-powershell/issues/3513
+  https://github.com/PowerShell/vscode-powershell/issues/3522
+  https://github.com/PowerShell/vscode-powershell/issues/4712
+  https://github.com/PowerShell/vscode-powershell/issues/614
+  https://github.com/PowerShell/vscode-powershell/issues/3410
+  https://github.com/PowerShell/vscode-powershell/issues/4531
+  https://github.com/PowerShell/vscode-powershell/issues/4185
+  https://learn.microsoft.com/en-us/answers/questions/993049/visual-studio-code-wont-let-me-debug-powershell-sc
+  https://learn.microsoft.com/en-ca/answers/questions/81055/foreeach-object-paraellel-in-powershell-7-debuggin
+  https://learn.microsoft.com/en-us/answers/questions/404821/getting-foreach-object-parameter-set-cannot-be-res
+  https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/60837777/how-is-the-new-powershell-7-foreach-object-parallel-implemented
+  https://alternativeto.net/software/powershell-studio

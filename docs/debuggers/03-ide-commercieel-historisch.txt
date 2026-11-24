@@ -1,0 +1,73 @@
+IDE'S: INGEBOUWD, COMMERCIEEL EN HISTORISCH
+============================================
+
+1. WINDOWS POWERSHELL ISE (Microsoft, gratis, alleen Windows)
+  - Zelfde engine-debugger als de console, met een Debug-menu erop.
+  - Via menu/sneltoetsen alleen line breakpoints; variabele- en commando-
+    breakpoints met Set-PSBreakpoint in het consolepaneel.
+  - Alleen Windows PowerShell (5.1). Voor PowerShell 6+ verwijst Microsoft naar
+    VS Code. Er komen geen nieuwe features meer bij.
+  - Kan via Enter-PSHostProcess/Debug-Runspace aanhaken aan andere processen
+    (de 5.0-voorbeelden van Debug-Runspace zijn ISE-gericht).
+
+2. ISESTEROIDS (add-on voor de ISE, commercieel, ~$190)
+  - Uitbreiding op de ISE, geen eigen debugger. Geroemd om de variabele-
+    verkenner tijdens het debuggen.
+  - Erft de beperking van de ISE: alleen 5.1. Of het nog onderhouden wordt kon
+    ik niet bevestigen.
+
+3. SAPIEN POWERSHELL STUDIO (commercieel, alleen Windows)
+  - Volwaardige PowerShell-IDE met debugger; ondersteunt Windows PowerShell en
+    PowerShell 7 (5.9.253, jan 2025: 7.4.7 en 7.5.0). Er is een 2026-versie.
+  - Remote debugging via RSEE (Remote Script Execution Engine), een service die
+    je op de doelmachine installeert. RSEE-installers in 2025 bijgewerkt.
+    Let op: dat is iets extra op de server, wat Trace juist wil vermijden.
+
+4. SAPIEN PRIMALSCRIPT (commercieel, alleen Windows)
+  - Meertalige script-IDE (PowerShell, VBScript, JScript, ...), zelfde RSEE
+    voor remote debugging, Windows PowerShell en PowerShell 7 naast elkaar.
+
+5. POWERSHELL PRO TOOLS / POWERSHELL TOOLS FOR VISUAL STUDIO (Ironman Software)
+  - Extensie voor Visual Studio (2017/2019/2022): editen, debuggen (lokaal en
+    remote via de Visual Studio-debugger), compileren tot exe, GUI-designer.
+  - Ooit open source door Adam Driscoll gestart (Microsoft forkte het, 2015).
+  - Ironman heeft het product end-of-life verklaard; de code wordt open source
+    gemaakt, binaries blijven op de Gallery/Marketplace. Of de broncode al
+    volledig gepubliceerd is, kon ik niet bevestigen.
+
+6. POWERGUI (Quest) - dood
+  - Gratis IDE met debugger, populair rond 2008-2011. Door Quest stopgezet;
+    nooit bijgewerkt voor PowerShell 3.
+
+7. POWERSHELL PLUS (Idera, oorspronkelijk Tobias Weltner) - dood
+  - Eerst betalend, later gratis; laatste release maart 2016.
+
+8. OVERIGE (genoemd in lijsten, niet verder onderzocht)
+  - Microsoft Script Explorer (stopgezet 2013, geen debugger).
+  - ScriptRunner: platform voor het delegeren/draaien van scripts; geen
+    debugger-informatie gevonden.
+  - DbgShell (Microsoft, GitHub): PowerShell als front-end voor de Windows-
+    debugger (WinDbg) om native processen te debuggen. Dus níet om PowerShell
+    te debuggen; vaak verward. Idem PowerDbg (oude scripts die WinDbg aansturen).
+  - Visual Studio Code-forks (VSCodium, Cursor, ...) gebruiken dezelfde
+    PowerShell-extensie via Open VSX; geen eigen debugger.
+
+BRONNEN
+  https://learn.microsoft.com/powershell/scripting/windows-powershell/ise/how-to-debug-scripts-in-windows-powershell-ise
+  https://devblogs.microsoft.com/scripting/use-the-debugger-in-the-windows-powershell-ise/
+  https://www.sqlservercentral.com/blogs/cool-tools-powershell-ise-steroids
+  https://www.techtarget.com/searchwindowsserver/feature/Handy-PowerShell-ISE-add-ons-for-server-administrators
+  https://www.componentsource.com/product/powershell-studio/releases?page=1
+  https://www.componentsource.com/product/powershell-studio/releases/2880056
+  https://www.componentsource.com/products/primalscript/index.html
+  https://www.scriptrunner.com/blog-admin-architect/introducing-three-popular-powershell-editors
+  https://ironmansoftware.com/poshtools
+  https://blog.ironmansoftware.com/powershell-pro-tools-end-of-life/
+  https://devblogs.microsoft.com/powershell/powershell-tools-for-visual-studio-now-available/
+  https://bitbucket.org/ironmansoftware/poshtools/issues/89/attaching-the-powershell-debug-engine
+  https://forums.powershell.org/t/where-can-i-find-powergui-add-ons-now/9381
+  https://petri.com/powershell-plus-review/
+  https://alternativeto.net/software/powershell-plus/about
+  https://alternativeto.net/lists/39445/powershell-ides
+  https://learn.microsoft.com/en-us/archive/technet-wiki/4109.powershell-script-editors
+  https://learn.microsoft.com/en-us/archive/blogs/debuggingtoolbox/powershell-script-powerdbg-v6-0-using-powershell-to-control-windbg

@@ -1,0 +1,65 @@
+HOSTS ZONDER DEBUGGER-UI EN NICHETOOLS
+=======================================
+Relevant voor Trace: scripts die als service, geplande taak, cron-job of vanuit
+.NET draaien hebben geen interactieve host. De engine kan dan wel stoppen,
+maar niemand handelt de DebuggerStop af.
+
+1. ADD-DEBUGGER.PS1 (Roman Kuzmin / nightroman, PowerShelf, Apache 2.0)
+  - Voegt een scriptdebugger toe aan (of vervangt die van) een runspace die er
+    zelf geen heeft: .NET-code die PowerShell aanroept, BeginInvoke() voor
+    achtergrondtaken, enzovoort.
+  - Typisch: Add-Debugger aanroepen, dan Wait-Debugger of een breakpoint, en het
+    script via $ps.Invoke()/BeginInvoke() draaien.
+  - 3.0.0 voegde -Path (uitvoer naar bestand) en -WriteHost toe; laatste versie
+    3.0.1 (1 dec 2025) op de PowerShell Gallery.
+  - Interessant als referentie voor hoe je een DebuggerStop-handler schrijft;
+    dezelfde situatie als in de Trace-PoC (geattachte runspace, geen host-UI).
+  Install-PSResource Add-Debugger   /   github.com/nightroman/PowerShelf
+
+2. INVOKE-BUILD: DEBUG-ERROR.PS1 (ook nightroman)
+  - Breekt automatisch in de debugger bij terminating errors. Vóór
+    $ErrorActionPreference = 'Break' (PowerShell 7) was dit de manier.
+  - Invoke-Build-wiki "Debugging Tips".
+
+3. POWERSHELL UNIVERSAL (Ironman, nu Devolutions)
+  - Officiële debugaanpak: Wait-Debugger in het script, dan
+    Enter-PSHostProcess -Id <pid van de PSU-host>, Get-Runspace,
+    Debug-Runspace -Id <n>. Dus gewoon de ingebouwde cmdlets.
+
+4. AZURE FUNCTIONS (PowerShell-worker)
+  - Lokaal debuggen: Wait-Debugger in de functie, dan aanhaken met VS Code
+    ("Attach to PowerShell Functions") of Enter-PSHostProcess.
+  - Er zijn issues met breakpoints die genegeerd worden (vscode-azurefunctions #2204).
+
+5. DSC CLASS RESOURCES
+  - Enable-DscDebug -BreakAll; de LCM wacht en geeft een Enter-PSHostProcess-
+    commando om aan te haken (devblogs 2016).
+
+6. EIGEN HOST IN .NET
+  - Wie PowerShell host in C# kan de Debugger-events (DebuggerStop,
+    BreakpointUpdated) zelf afhandelen, en Debugger.SetDebuggerStepMode /
+    SetLineBreakpoint e.d. aanroepen. Dat is wat Trace in de PoC doet vanuit
+    PowerShell zelf (zie architectuur.md: "De debugger-API rechtstreeks werkt
+    wel").
+  - Een Rider-forumpost beschrijft het andere geval: de C#-host debuggen terwijl
+    hij PowerShell aanroept; dan zie je in de .NET-debugger alleen PSObjects,
+    niet de PowerShell-regels.
+
+7. ANDERE TECHNIEKEN UIT DE PRAKTIJK
+  - Start-Transcript in geplande taken / services.
+  - Logging-modules (PSFramework, PoShLog) met uitgebreide debuglevels.
+  - $ErrorActionPreference = 'Stop' + try/catch met $_.ScriptStackTrace en
+    $_.InvocationInfo.PositionMessage in een logbestand ("post-mortem").
+  - Script lokaal kopiëren en daar debuggen (aanbevolen door de Set-PSBreakpoint-
+    docs zelf, omdat remote breakpoints niet kunnen).
+
+BRONNEN
+  https://www.powershellgallery.com/packages/Add-Debugger
+  https://github.com/nightroman/PowerShelf
+  https://github.com/nightroman/Invoke-Build/wiki/Debugging-Tips
+  https://docs.devolutions.net/powershell-universal/development/debugging-scripts
+  https://docs.azure.cn/en-us/azure-functions/functions-debug-powershell-local
+  https://github.com/microsoft/vscode-azurefunctions/issues/2204
+  https://devblogs.microsoft.com/powershell/debugging-powershell-dsc-class-resources/
+  https://rider-support.jetbrains.com/hc/en-us/community/posts/360010505420
+  https://myitforum.substack.com/p/common-mistakes-in-powershell-and

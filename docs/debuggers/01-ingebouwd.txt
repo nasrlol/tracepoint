@@ -1,0 +1,98 @@
+DE INGEBOUWDE DEBUGGER (ENGINE + CMDLETS)
+==========================================
+Alles in dit bestand zit standaard in PowerShell; niets te installeren.
+
+1. BREAKPOINTS
+  Set-PSBreakpoint     breakpoint op regel (-Line), variabele (-Variable, met
+                       -Mode Read/Write/ReadWrite) of commando (-Command).
+                       -Action { ... } voert code uit bij het breakpoint;
+                       zonder 'break' in de actie loopt het script door
+                       (= tracepoint, de basis van Trace niveau 2).
+                       -Runspace bestaat sinds PowerShell 7.2.
+                       Kan geen breakpoint op een andere computer zetten
+                       (volgens de docs: script lokaal kopiëren, of
+                       Enter-PSSession gebruiken).
+  Get-PSBreakpoint, Enable-/Disable-/Remove-PSBreakpoint
+  Get-PSCallStack      huidige call stack.
+
+  In de debugger-prompt: s(tep into), v (step over), o (step out),
+  c(ontinue), q(uit), k (call stack), l(ist), ? / h (help).
+
+2. INBREKEN ZONDER VOORAF BREAKPOINT
+  Wait-Debugger        stopt de engine direct na de aanroep en wacht tot een
+                       debugger aanhaakt. Docs: "verwijder deze regels als je
+                       klaar bent". Gebruikt door PowerShell Universal, en in
+                       ForEach-Object -Parallel als workaround.
+  $ErrorActionPreference = 'Break'  (PowerShell 7) breekt in de debugger bij
+                       een fout. Basis van Trace niveau 1.
+  Debug-Error.ps1      helper uit de Invoke-Build-wiki die bij terminating
+                       errors automatisch inbreekt (oudere techniek, zie 04).
+
+3. AANHAKEN AAN EEN ANDER PROCES / ANDERE RUNSPACE
+  Get-PSHostProcessInfo  alle lokale processen die PowerShell hosten.
+  Enter-PSHostProcess -Id <pid>
+                       interactieve sessie in een ander proces dat de engine
+                       geladen heeft. Niet in je eigen proces. Vereist admin,
+                       of dat jij hetzelfde account bent dat het script draait.
+                       Sinds 6.2 ook op Linux/macOS (Unix-socket in de temp-map).
+                       Sinds 7.1 ook vanuit een interactieve remote sessie.
+  Get-Runspace         runspaces in het (huidige) proces; runspace 1 is meestal
+                       die van het script.
+  Debug-Runspace -Id n interactieve debugsessie op een runspace; werkt zodra die
+                       runspace een commando draait of op een breakpoint staat.
+                       Verlaten met 'exit' / 'detach'.
+  Debug-Job            hetzelfde voor achtergrondjobs.
+
+  Onder de motorkap: [System.Management.Automation.Runspaces.NamedPipeConnectionInfo]
+  + [runspacefactory]::CreateRunspace(). Dat gebruikt Trace (architectuur.md).
+
+4. REMOTE
+  Enter-PSSession      interactieve remote sessie waarin je breakpoints kunt
+                       zetten en scripts kunt debuggen (sinds Windows
+                       PowerShell 4.0; toen moesten beide kanten 4.0 zijn).
+  Staat een remote script stil op een breakpoint, dan werkt Receive-PSSession
+  niet ("session is stopped in the debugger"); je moet met Enter-PSSession binnen.
+  Over SSH-remoting in PowerShell 7 vond ik geen specifieke documentatie; in de
+  PoC van Trace werkt het (zie architectuur.md).
+
+5. PARALLELLISME (VALKUIL)
+  ForEach-Object -Parallel: elke scriptblock-uitvoering krijgt een eigen
+  runspace, dus breakpoints in het parallelle blok worden gewoon overgeslagen.
+  Workarounds (Stack Overflow / Microsoft Q&A):
+    - Wait-Debugger in het blok zetten en vanuit een tweede pwsh aanhaken
+      (Enter-PSHostProcess, Get-Runspace, Debug-Runspace).
+    - Met -AsJob draaien, dan kan Get-Runspace/Debug-Runspace in hetzelfde
+      venster (uitvoer is tijdens het steppen soms niet zichtbaar).
+    - Set-PSBreakpoint -Runspace (7.2+) op de juiste runspace.
+  Voor ThreadJob/Debug-Job vond ik geen specifiek antwoord; zelfde principe.
+
+6. TRACING (GEEN STAP-DEBUGGER)
+  Set-PSDebug -Trace 1 elke scriptregel wordt getoond terwijl hij draait.
+  Set-PSDebug -Trace 2 ook variabeletoewijzingen ("SET $i = '1'") en aanroepen.
+  Set-PSDebug -Step    vraag per regel om bevestiging.
+  Set-PSDebug -Off     alles uit.
+  Trace-Command        tracet engine-internals (parameter binding,
+                       CommandDiscovery, ...), niet je eigen regels.
+                       Bv. Trace-Command -Name ParameterBinding -Expression {...} -PSHost
+  Write-Debug / Write-Verbose  eigen meldingen; zichtbaar met -Debug/-Verbose of
+                       via $DebugPreference / $VerbosePreference.
+  Set-StrictMode -Version Latest  vangt fouten (o.a. niet-bestaande variabelen)
+                       vroeg; aanbevolen tijdens ontwikkeling.
+  Start-Transcript     alles wat in de host verschijnt naar een bestand.
+
+BRONNEN
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_debuggers
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/set-psbreakpoint
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/wait-debugger
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/debug-runspace
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.core/enter-pshostprocess
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.core/set-psdebug
+  https://devblogs.microsoft.com/powershell/powershell-runspace-debugging-part-1/
+  https://devblogs.microsoft.com/powershell/windows-powershell-remote-debugging/
+  https://devblogs.microsoft.com/scripting/remote-script-debugging-in-windows-powershell/
+  https://devblogs.microsoft.com/powershell/debugging-powershell-dsc-class-resources/
+  https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature
+  https://learn.microsoft.com/en-ca/answers/questions/81055/foreeach-object-paraellel-in-powershell-7-debuggin
+  https://devblogs.microsoft.com/scripting/troubleshoot-by-using-set-psdebug/
+  https://devblogs.microsoft.com/scripting/trace-your-commands-by-using-trace-command/
+  https://engineering.statefarm.com/blog/red-team-research-runspace-debugging

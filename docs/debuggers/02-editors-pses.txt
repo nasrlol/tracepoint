@@ -1,0 +1,98 @@
+EDITORS OP BASIS VAN POWERSHELL EDITOR SERVICES (PSES)
+=======================================================
+PSES (github.com/PowerShell/PowerShellEditorServices) is de backend van de
+VS Code-extensie. Het biedt LSP (taalondersteuning) en DAP (debugger) aan, via
+named pipes of Unix domain sockets. Debugger en LSP draaien in hetzelfde
+proces, dus een client moet DAP spreken. De README waarschuwt dat de .NET-types
+van PSES op elk moment kunnen veranderen: niet tegen linken in productie.
+In deze repo zit PSES al in shell.nix (powershell-editor-services).
+
+1. VISUAL STUDIO CODE + POWERSHELL-EXTENSIE (de standaard)
+  - Microsoft verwijst voor PowerShell 6+ naar VS Code; de ISE kan alleen 5.1.
+  - Launch-configs (launch.json, "type": "PowerShell"):
+      Launch Current File           script in de integrated console
+      Launch ... in Temporary Console  nieuwe host per run, daarna weg
+      Interactive Session           debugger aan de huidige console, zonder script
+      Attach to Host Process        "request": "attach",
+                                    "processId": "${command.PickPSHostProcess}",
+                                    "runspaceId": 1
+                                    -> zelfde mechanisme als Enter-PSHostProcess
+  - Line-, conditionele, hitcount- en function-breakpoints in de UI; variabele-
+    breakpoints via Set-PSBreakpoint in de console.
+  - Remote: openen van een bestand in een remote sessie (psedit) en debuggen; er
+    zijn meldingen dat breakpoints remote niet betrouwbaar zijn (issue #4531).
+  - Werkt niet in Constrained Language Mode (Microsoft Q&A).
+  - Bekende klachten: zie 05-community.txt.
+  Doc: https://learn.microsoft.com/powershell/scripting/dev-cross-plat/vscode/using-vscode
+
+2. NEOVIM (alle drie via nvim-dap)
+  nvim-dap-powershell   github.com/Willem-J-an/nvim-dap-powershell
+                        standaardconfigs voor launch én attach, vereist PSES,
+                        bestandstype 'ps1' zodat launch.json werkt.
+  powershell.nvim       github.com/TheLeoP/powershell.nvim
+                        LSP + debugging samen, vereist nvim-dap, Neovim 0.10+.
+  dap-powershell.nvim   github.com/L4TDTBP/dap-powershell.nvim
+                        draait PSES in een terminal-split, praat via een named
+                        pipe; voordeel: scriptuitvoer in een echte terminal.
+  Algemeen: nvim-dap wiki "Debug Adapter installation".
+
+3. HELIX
+  Geen PowerShell-adapter standaard. De Helix-wiki (Debugger Configurations)
+  geeft een config voor languages.toml: PSES-zip downloaden, een attach-template
+  met een PID-prompt en runspaceId = '1', en een launch-template.
+  LSP-kant: [language-server.powershell-editor-services] met command = "pwsh"
+  (voorbeeld in PSES issue #2215).
+
+4. EMACS
+  dap-mode: er bestaat dap-pwsh.el (kiennq/lsp-powershell, ook in forks van
+            emacs-lsp/dap-mode) die een "PowerShell"-provider registreert.
+            Status onduidelijk, behandelen als referentie.
+  dape:     geen kant-en-klare PowerShell-config gevonden. Dape spreekt DAP,
+            dus PSES zou moeten werken met een eigen config (niet getest).
+  Relevant: .dir-locals.el in deze repo.
+
+5. JETBRAINS (IntelliJ, Rider, ...)
+  intellij-powershell (github.com/ant-druha/intellij-powershell)
+  - Debugger-ondersteuning sinds v2.7.0, gebaseerd op DAP van PSES
+    (PSES toen 3.20.1, minimum IntelliJ 2024.2).
+  - v2.10.0: fix voor "Before task" in Debug (#323).
+  - v2.11.0: minimum IntelliJ 2025.2.
+  - Welke breakpointtypes precies werken staat niet in de release notes.
+  Ironman heeft een gids voor de plugin in Rider (alleen run-configs).
+
+6. ZED
+  Zed heeft een DAP-debugger (Rust, C/C++, JS, Go, Python), maar volgens de
+  eigen PowerShell-pagina is PowerShell-debugging "nog niet beschikbaar".
+  Taalondersteuning komt van een community-extensie die PSES downloadt.
+  Een debugger-extensie zou kunnen (Zed ondersteunt DAP-extensies), maar er is
+  er geen gevonden.
+
+7. TERMINAL / TUI
+  tdb (github.com/AlDanial/tdb)
+       TUI-debugger voor Python, Perl, bash, C/C++ en pwsh, via DAP. Vereist
+       pwsh 7.2+ en PSES; geen Windows PowerShell 5.1; --terminal en remote
+       attach nog niet voor PowerShell.
+  dap-tui (github.com/msladecek/dap-tui)
+       generieke DAP-terminalclient; zelf aan PSES koppelen.
+  En natuurlijk: de pwsh-console zelf met de cmdlets uit 01-ingebouwd.txt is
+  ook een volwaardige terminaldebugger.
+
+BRONNEN
+  https://github.com/PowerShell/PowerShellEditorServices
+  https://github.com/PowerShell/PowerShellEditorServices/wiki/Development-Roadmap
+  https://learn.microsoft.com/powershell/scripting/dev-cross-plat/vscode/using-vscode
+  https://devblogs.microsoft.com/scripting/debugging-powershell-script-in-visual-studio-code-part-1
+  https://devblogs.microsoft.com/scripting/debugging-powershell-script-in-visual-studio-code-part-2/
+  https://github.com/Willem-J-an/nvim-dap-powershell
+  https://github.com/TheLeoP/powershell.nvim
+  https://github.com/L4TDTBP/dap-powershell.nvim
+  https://github.com/mfussenegger/nvim-dap/wiki/Debug-Adapter-installation
+  https://github-wiki-see.page/m/helix-editor/helix/wiki/Debugger-Configurations
+  https://github.com/PowerShell/PowerShellEditorServices/issues/2215
+  https://github.com/kiennq/lsp-powershell/blob/master/dap-pwsh.el
+  https://github.com/ant-druha/intellij-powershell/releases
+  https://blog.ironmansoftware.com/daily-powershell/powershell-jetbrains-rider
+  https://zed.dev/languages/powershell
+  https://zed.dev/docs/debugger
+  https://github.com/AlDanial/tdb
+  https://github.com/msladecek/dap-tui
