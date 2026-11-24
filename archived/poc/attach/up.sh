@@ -36,7 +36,7 @@ trap 'kill $HTTP' EXIT
 # KVM if accessible (user in 'kvm' group), else slow TCG emulation
 if [ -w /dev/kvm ]; then ACC='-accel kvm -cpu host'; else ACC='-accel tcg,thread=multi -cpu max,pauth-impdef=on'; fi
 qemu-system-aarch64 -machine virt $ACC -smp 4 -m 1536 \
-  -bios /usr/share/qemu/edk2-aarch64-code.fd \
+  -bios "${QEMU_EFI:-/usr/share/qemu/edk2-aarch64-code.fd}" \
   -drive if=virtio,file=run/disk.qcow2 \
   -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
   -smbios "type=1,serial=ds=nocloud;s=http://10.0.2.2:$PORT/" \

@@ -32,7 +32,7 @@ Niveau 1 tot 3 mogen alleen op servers met `trace_debug: true`.
 
 ## Attachen aan een draaiend script (niveau 3)
 
-Aangetoond in `poc/attach`. De keten:
+Aangetoond in `archived/poc/attach`. De keten:
 
 1. **SSH-remoting** naar de server: `New-PSSession -HostName … -KeyFilePath …`.
 2. **Het script vinden**: `pwsh`-processen waarvan de opdrachtregel naar het script wijst.

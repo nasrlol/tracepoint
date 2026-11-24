@@ -36,7 +36,7 @@ all:
           ansible_host: 10.0.1.21
           ansible_user: ci     # scripts draaien hier als 'ci'
 
-    lab:                       # de PoC-VM uit poc/attach
+    lab:                       # de PoC-VM uit archived/poc/attach
       vars:
         trace_debug: true
       hosts:
@@ -44,4 +44,4 @@ all:
           ansible_host: 127.0.0.1
           ansible_port: 2222
           ansible_user: dbg
-          ansible_ssh_private_key_file: poc/attach/key
+          ansible_ssh_private_key_file: archived/poc/attach/key
