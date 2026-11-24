@@ -52,6 +52,21 @@ function Trace-Handle-Debug-Action {
 }
 
 
+function Trace-Get-Back-Trace {
+  param([Parameter(Mandatory)][int]$Id)
+  # TODO: this doesnt work when in a script.
+  # we need to call an api that handles this
+  # because we're in a differnet runspace
+  Enter-PSHostProcess -Id  $Id
+  Debug-Runspace -Id 1
+  Get-PSCallStack
+}
+
+
+# TODO: add autocompletion for typing out the id
+# TODO: we should be able to handle and match the ids with the window names
+
+
 
 function Trace-Start-Repl {
 
@@ -66,11 +81,9 @@ function Trace-Start-Repl {
     switch($cmd)
     {
 
-      "list" {Trace-List-All-Targets | Out-Host}
-      "attach"
-      {
-        Trace-Attach-To-Target $arg
-      }
+      "list"   { Trace-List-All-Targets | Out-Host }
+      "attach" { Trace-Attach-To-Target $arg       }
+      "bt"     { Trace-Get-Back-Trace $arg         }
     }
   }
 }
