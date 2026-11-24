@@ -1,0 +1,108 @@
+~ volgorde
+
+
+-- 0 fundament -> 1 testvloot -> M1 de vloot zien -> M2 logs -> M3 crashrapport -> M4 live meekijken
+-- bouw de mijlpalen in deze volgorde: elke mijlpaal levert iets werkends op, alle vier samen = MVP (docs/voorstel.md: Mijlpalen)
+-- "af" = werkt op de 5 testservers, niet = tests slagen (docs/voorstel.md: MVP)
+-- spec-driven: per onderdeel eerst de spec ("gegeven X, verwacht Y") in docs/specs/, dan de Pester-test, dan de code
+-- goedgekeurd "mits in acht name van de eerdere bemerkingen en voorzichtigheid t.o.v. de valkuilen" (archived/communicatie-log.txt, 23 nov): scope niet laten groeien, alles wat niet in de mijlpalen staat is extra
+-- deadlines en coachingmomenten van het vak in de agenda zetten (feedback 17 nov: agenda en planning respecteren); bij elke nieuwe versie een wijzigingenlijst in de comments
+
+
+~ 0 fundament (module, tests, ci)
+
+
+source/Trace.ps1:1: leeg, en een module is .psm1 + .psd1 -> source/Trace.psm1 die Public/*.ps1 en Private/*.ps1 dot-sourcet en alleen Public exporteert, plus source/Trace.psd1 (New-ModuleManifest: PowerShellVersion = '7.4', RequiredModules = powershell-yaml, FunctionsToExport expliciet, geen wildcards)
+README.md:1: alleen "# Trace" -> wat het is, vereisten (pwsh 7.4+, sshd powershell-subsystem), installatie, de pipeline Import-TraceServer | Find-TraceScript | Connect-TraceScript, link naar docs/
+-- tests/Trace.Tests.ps1 skelet + tests/PesterConfiguration.psd1 (Run.Path = tests, CodeCoverage op source/, TestResult als NUnitXml voor de runner)
+-- PSScriptAnalyzer-instellingen (PSScriptAnalyzerSettings.psd1) en een test die faalt bij waarschuwingen op source/ (rubriek: Best practices); zit al in powershell-editor-services, voor CI apart Save-PSResource in shell.nix:25
+-- build.ps1 met taken test / lint / help, zodat lokaal en in CI hetzelfde draait
+-- ci op de eigen runner: getriggerd bij een push, draait build.ps1 test lint; nakijken op welke machine en of die KVM heeft (dan kunnen de veerkrachttests met VM's ook in CI)
+-- docs/specs/ map met per mijlpaal een spec-bestand; docs/architectuur.md bijwerken als een ontwerpkeuze verandert
+-- docs: about_Modules, about_Module_Manifests, New-ModuleManifest, about_Functions_Advanced, about_Comment_Based_Help, approved verbs (Get-Verb), pester.dev/docs/quick-start + /usage/configuration, PSScriptAnalyzer overview (learn.microsoft.com/powershell/utility-modules/psscriptanalyzer)
+
+
+~ 1 testvloot: 5 testservers
+
+
+archived/poc/attach/up.sh:41: start één VM met een vaste poort (2222), een vaste naam en een vaste sleutel -> parameter voor het aantal VM's (n=5), poort 2222+n, eigen overlay en seed per VM, hostnaam vm0n; down.sh stopt ze allemaal
+archived/poc/attach/up.sh:37: aarch64 op een x86_64-host zonder /dev/kvm = TCG-emulatie (~72 s voor één VM; 5 tegelijk wordt traag) -> x86_64 debian-13-genericcloud image + qemu-system-x86_64, en jezelf in de groep kvm (NixOS: users.users.nasr.extraGroups = [ "kvm" ])
+-- de testvloot hoort niet in archived/: verplaatsen naar tests/fleet/ (up.sh, down.sh, testscripts), archived/poc/attach blijft als bewijs van de PoC; .gitignore-regels (cache/, run/, key) meeverhuizen
+-- testscripts per VM die de demo nodig heeft: lus met $teller (tracepoint), script dat op regel 12 crasht met $teller = 5, script met Start-Transcript (M2), script met een PSCredential-variabele (maskeren)
+-- vm05 bewust onbereikbaar laten (staat in de inventaris, VM niet gestart) voor de demo en de veerkrachttests
+-- fleet.yml voor de testvloot genereren uit up.sh (groep lab, 5 hosts, poorten 2222..2226); fleet.yml staat al in .gitignore
+-- docs: cloud-init NoCloud datasource (cloudinit.readthedocs.io/en/latest/reference/datasources/nocloud.html), QEMU user networking hostfwd, PowerShell remoting over SSH (sshd Subsystem-regel)
+
+
+~ M1 de vloot zien: serverlijst, Test-TraceServer, discovery, parallel
+
+
+-- af als: Find-TraceScript toont op 5 servers tegelijk alle pwsh-scripts met PID, gebruiker en pad; een ongeldige of onbereikbare server geeft een fout met zijn naam en houdt de rest niet op
+fleet.example.yml:18: "TODO: schrijf een parser hiervoor" -> Import-TraceServer (Public/Import-TraceServer.ps1): ConvertFrom-Yaml, all -> children -> hosts recursief aflopen, vars erven van groep naar subgroep naar host (host wint), defaults invullen (ansible_host = naam, ansible_port = 22, trace_debug = false), onbekende variabelen negeren; uitvoer: één [pscustomobject] per server met PSTypeName 'Trace.Server'
+-- validatie in Import-TraceServer: verplichte velden, types (poort is int 1..65535, trace_debug is bool en geen string 'true'), unieke hostnamen over alle groepen heen; fout met bestand, groep en hostnaam; een host in twee groepen: afspraak vastleggen in de spec (Ansible voegt samen)
+-- ~ in ansible_ssh_private_key_file en relatieve paden oplossen tegenover de map van fleet.yml, niet de huidige map
+-- Private/New-TraceSession: één New-PSSession -HostName -Port -UserName -KeyFilePath per server, hergebruikt door alle cmdlets (voorstel: één SSH-sessie per server); timeout instellen zodat een onbereikbare server snel faalt
+-- Test-TraceServer: per server pwsh-versie >= 7.4, powershell-subsystem (= sessie lukt), rechten om te attachen (zelfde gebruiker als de scripts of root, en /tmp niet afgeschermd); uitvoer per server met wat ontbreekt (SWOT W2, T2)
+-- Find-TraceScript: in de sessie Get-Process pwsh, $PID van de eigen sessie uitsluiten, PID + gebruiker + CommandLine -> scriptpad uit -File of het eerste .ps1-argument; uitvoer 'Trace.Script' met de server erbij, pipelinebaar vanuit Import-TraceServer
+-- parallel: Invoke-Command -Session @(alle sessies) -ThrottleLimit (standaard 32, instelbaar) voor servercontrole en discovery; resultaten verschijnen zodra ze binnenkomen; fouten per server opvangen (-ErrorVariable, PSComputerName) zodat één server de rest niet stopt
+-- parsen parallel: ForEach-Object -Parallel -ThrottleLimit over de gevonden scripts (Parser.ParseFile per script; komt pas echt in M2)
+-- unittests met Mock voor New-PSSession / Invoke-Command / Get-Process; inventaris-tests op losse YAML-bestanden in tests/data/ (geldig, ontbrekend veld, dubbele naam, verkeerde types, geneste groepen)
+-- performancetest: Measure-Command over 5 servers < som van de tijden per server (voorstel: Testen)
+-- comment-based help met voorbeelden bij elke Public-functie, vanaf de eerste functie
+-- docs: powershell-yaml (ConvertFrom-Yaml, -Ordered), Ansible inventory guide (groups, children, vars, variable precedence), New-PSSession (-HostName, -KeyFilePath, -Options), Invoke-Command (-Session, -ThrottleLimit), about_Remote_Output, about_Remote_Troubleshooting, Get-Process (CommandLine op Linux), ForEach-Object -Parallel, about_Thread_Jobs, about_Functions_Advanced_Parameters + about_Functions_Argument_Completion (ValidateSet/ValidateRange), about_Pipelines (ValueFromPipelineByPropertyName), pester.dev/docs/usage/mocking
+
+
+~ M2 logs (niveau 0)
+
+
+-- af als: Get-TraceLog haalt het log op van een script dat Start-Transcript gebruikt
+-- logpaden vinden: Parser.ParseFile -> $ast.FindAll({ $args[0] -is [CommandAst] }, $true) -> Start-Transcript -Path, Out-File -FilePath, Add-Content / Set-Content -Path, en > / >> (FileRedirectionAst)
+-- alleen letterlijke paden zijn zeker (StringConstantExpressionAst); paden met variabelen ($PSScriptRoot, $env:...) markeren als 'onzeker' in plaats van te raden; afspraak in de spec
+-- het script lezen gebeurt op de server: Invoke-Command { [Parser]::ParseFile(...) } of Get-Content + ParseInput lokaal, kiezen en vastleggen
+-- Get-TraceLog: bestand ophalen via de bestaande sessie (Copy-Item -FromSession of Get-Content -Tail), parallel over servers
+-- unittests op een map met voorbeeldscripts per logvorm
+-- docs: Parser.ParseFile en Parser.ParseInput, Ast.FindAll, CommandAst.GetCommandName, CommandElement / CommandParameterAst, FileRedirectionAst (System.Management.Automation.Language op learn.microsoft.com/dotnet/api), about_Redirection, Start-Transcript, Copy-Item -FromSession
+
+
+~ M3 crashrapport (niveau 1), write-ahead log, opnieuw verbinden
+
+
+-- af als: een script dat via de wrapper crasht geeft een rapport met regel, variabelen, callstack en $Error, zonder PSCredential; verbinding verbreken en herstellen verliest geen records en dubbelt er geen
+-- spike eerst: wrapper die het script in een eigen runspace draait met $ErrorActionPreference = 'Break', zich abonneert op Debugger.DebuggerStop en in de stop Get-Variable / Get-PSCallStack / $Error uitvoert (Debugger.ProcessCommand), daarna het script laat stoppen; zonder interactieve host is dit nog niet aangetoond (docs/architectuur.md: Nog niet aangetoond)
+-- spanning met het voorstel: "op de server niets geïnstalleerd" maar de wrapper en het log moeten op de server staan -> wrapper bij elke run via Copy-Item -ToSession neerzetten, of uitleggen dat het alleen een script is en geen agent; in docs/architectuur.md vastleggen
+-- crashrapport-schema in docs/specs/crashrapport.md: server, script, pid, tijd, regel, kolom, fout, $Error, callstack, variabelen per scope tot een instelbare diepte (ConvertTo-Json -Depth), schema-versie
+-- maskeren: SecureString en PSCredential nooit in het rapport, ook niet genest in een hashtable of object; test met een PSCredential diep in een object
+-- rapporten: één JSON-bestand per crash in reports/<server>/, bestandsrechten 600, instelbare bewaartermijn (SWOT T4)
+-- write-ahead log op de server (docs/specs/wal.md): formaat (JSON Lines met oplopende offset), locatie (bv. ~/.local/state/trace/), wat "bevestigd" betekent, wanneer opruimen, maximale grootte
+-- crashrapport meteen naar het log (fsync), tracepoint-records via een writer op de achtergrond (asynchronous commit): het verlies bij een crash van het doelproces in de spec beschrijven
+-- opnieuw verbinden: wachttijd verdubbelt per poging tot een instelbaar maximum, dan verder lezen vanaf de laatst bevestigde offset; geen verlies, geen dubbels
+-- het log is vol (SWOT W5, nog open): kiezen en in de spec zetten; richting: oudste tracepoint-records laten vallen en het gat in het rapport melden, crashrapporten nooit weggooien
+-- veerkrachttest: tijdens het ophalen de VM-netwerkverbinding verbreken (QEMU monitor: set_link of de VM pauzeren), herstellen, records tellen
+-- trace_debug: false -> de wrapper weigert; -WhatIf / -Confirm via SupportsShouldProcess (twee sloten per ingreep, SWOT T1)
+-- docs: about_Preference_Variables ($ErrorActionPreference Break), about_Debuggers, Debugger-klasse (DebuggerStop, ProcessCommand, SetDebuggerStepMode; learn.microsoft.com/dotnet/api/system.management.automation.debugger), DebuggerStopEventArgs, Get-PSCallStack, about_Automatic_Variables ($Error), ErrorRecord + InvocationInfo (ScriptLineNumber), about_Scopes, ConvertTo-Json (-Depth), jsonlines.org, PostgreSQL WAL intro / asynchronous commit / WAL internals (bronnen in het voorstel), about_Functions_CmdletBindingAttribute (SupportsShouldProcess), Copy-Item -ToSession
+
+
+~ M4 live meekijken (niveau 2 en 3), lease
+
+
+-- af als: een tracepoint op een al draaiend script toont het verloop van een variabele, met gemeten vertraging; na een wegvallende verbinding is de tracepoint binnen de lease-duur weg
+-- archived/poc/attach/debug.ps1 ombouwen tot Connect-TraceScript (attach via NamedPipeConnectionInfo, runspace 1) en Set-TraceTracepoint / Remove-TraceTracepoint (Debugger.SetVariableBreakpoint / SetLineBreakpoint / RemoveBreakpoint), werkend via de pipeline vanuit Find-TraceScript
+archived/poc/attach/debug.ps1:16: het scriptpad '/opt/hello.ps1' en runspace -Id 1 staan vast -> pad uit Find-TraceScript, en nagaan of runspace 1 altijd de scriptrunspace is (scripts met eigen runspaces of ForEach-Object -Parallel)
+archived/poc/attach/debug.ps1:28: Start-Sleep $Seconds en dan pas alles ophalen -> records doorlopend uit de wachtrij halen (TryDequeue in een lus) en via de writer naar het log (M3) schrijven
+archived/poc/attach/debug.ps1:17: de wachtrij heet 'tp' en wordt bij elke attach vervangen -> naam per Trace-sessie, zodat twee debuggers op hetzelfde proces elkaars records niet weggooien
+-- lease (spike): de beheermachine zet een heartbeat-tijd in AppDomain-data, de actie van de tracepoint kijkt die na en verwijdert de breakpoint zelf als ze ouder is dan de lease-duur; nagaan of een actie zijn eigen breakpoint kan verwijderen (Get-PSBreakpoint / Remove-PSBreakpoint in de doelrunspace)
+-- wachtrij met maximale grootte, zodat een vergeten tracepoint het geheugen niet laat groeien (SWOT T3)
+-- crashrapport via attach (niveau 1 op een al draaiend proces) is nog niet aangetoond: lukt het niet, dan wordt alleen dat deel een extra (voorstel: MVP)
+-- performancetest: vertraging van hello.ps1 met en zonder tracepoint (Measure-Command of tijd per lus-iteratie)
+-- veerkrachttest: verbinding verbreken -> na de lease-duur staan er geen breakpoints meer (Get-PSBreakpoint via een nieuwe attach)
+-- docs: about_Debuggers, Debugger.SetVariableBreakpoint / SetLineBreakpoint / RemoveBreakpoint / GetBreakpoints, Enter-PSHostProcess en Get-PSHostProcessInfo, NamedPipeConnectionInfo, RunspaceFactory.CreateRunspace, Get-Runspace, Debug-Runspace, Set-PSBreakpoint (-Action, waarom -Runspace weigert), System.Collections.Concurrent.ConcurrentQueue, Measure-Command
+
+
+~ demo en oplevering
+
+
+-- demoscenario uit het voorstel als script: 5 servers, vm05 onbereikbaar, tracepoint op $teller, crash op regel 12 met $teller = 5
+-- about_Trace-helptopic (source/en-US/about_Trace.help.txt) en help met voorbeelden per cmdlet (rubriek: Usability)
+-- meetbare performancedoelen: eerst een basislijn op de 5 testservers (Measure-Command), dan pas getallen voor vertraging per tracepoint, Test-TraceServer, Find-TraceScript, crash -> rapport, geheugen per wachtrij
+-- terugvalplan als M4 niet lukt: Debug Adapter Protocol via PowerShell Editor Services (voorstel: Ontwerp en alternatieven)
+-- docs: about_Comment_Based_Help, about_Help_Files (about_-topics in een module)
