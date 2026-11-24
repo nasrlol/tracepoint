@@ -8,3 +8,4 @@ archived/poc/attach/key.pub
 fleet.yml
 .direnv/
 .modules/
+tests/sandbox/
