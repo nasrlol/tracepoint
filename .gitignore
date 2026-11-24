@@ -9,3 +9,4 @@ fleet.yml
 .direnv/
 .modules/
 tests/sandbox/
+build/*.xml
